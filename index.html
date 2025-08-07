@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Arquivo para Esquecer</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
 
   <!-- CSS externo -->
   <link rel="stylesheet" href="style.css" />
@@ -20,8 +19,7 @@
   <h1>🧠 Arquivo para Esquecer</h1>
 
   <!-- Upload da imagem -->
-  <input type="file" id="upload" accept="image/png, image/jpeg" onchange="handleFile(this.files[0])" />
-
+  <input type="file" id="upload" accept="image/png, image/jpeg" />
 
   <!-- Label dos modos -->
   <div class="label-apagamento">Selecione a forma de apagamento:</div>
@@ -29,17 +27,17 @@
   <!-- Botões com ícones -->
   <div>
     <button onclick="applyEffect('urgencia')">
-      <img src="assets/rasgar-icon.png" alt="Rasgar" width="20" style="vertical-align:middle; margin-right:6px;" />
+      <img src="assets/icone_rasgar.png" alt="Rasgar" width="20" style="vertical-align:middle; margin-right:6px;" />
       Rasgar com urgência
     </button>
 
     <button onclick="applyEffect('retorno')">
-      <img src="assets/corromper-icon.png" alt="Corromper" width="20" style="vertical-align:middle; margin-right:6px;" />
+      <img src="assets/icone_corromper.png" alt="Corromper" width="20" style="vertical-align:middle; margin-right:6px;" />
       Corromper sem retorno
     </button>
 
     <button onclick="applyEffect('indiferenca')">
-      <img src="assets/desbotar-icon.png" alt="Desbotar" width="20" style="vertical-align:middle; margin-right:6px;" />
+      <img src="assets/icone_desbotar.png" alt="Desbotar" width="20" style="vertical-align:middle; margin-right:6px;" />
       Desbotar por indiferença
     </button>
   </div>
@@ -51,7 +49,7 @@
   <div id="frase-final"></div>
 
   <!-- Botão de download -->
-  <button id="download-btn" onclick="saveCanvas('imagem_apagada', 'png')">Baixar imagem</button>
+  <button id="download-btn" onclick="downloadImage()">Baixar imagem</button>
 
   <!-- Script com os efeitos -->
   <script src="arquivo_para_esquecer.p5.js"></script>
