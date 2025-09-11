@@ -1,31 +1,28 @@
-function desbotarPorIndiferenca(img) {
+// Função de blur suave que estava no seu código original do p5.js
+function applyBoxBlur(img) {
   let output = createImage(img.width, img.height);
-  output.loadPixels();
   img.loadPixels();
+  output.loadPixels();
 
-  for (let x = 0; x < img.width; x++) {
-    for (let y = 0; y < img.height; y++) {
-      let index = (x + y * img.width) * 4;
-      let r = img.pixels[index];
-      let g = img.pixels[index + 1];
-      let b = img.pixels[index + 2];
-
-      // Conversão para escala de cinza
-      let gray = 0.3 * r + 0.59 * g + 0.11 * b;
-
-      // Mistura de 85% cinza com 15% da cor original
-      output.pixels[index]     = gray * 0.85 + r * 0.15;
-      output.pixels[index + 1] = gray * 0.85 + g * 0.15;
-      output.pixels[index + 2] = gray * 0.85 + b * 0.15;
-      output.pixels[index + 3] = 255;
+  for (let y = 1; y < img.height - 1; y++) {
+    for (let x = 1; x < img.width - 1; x++) {
+      let r = 0, g = 0, b = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          let idx = 4 * ((y + dy) * img.width + (x + dx));
+          r += img.pixels[idx];
+          g += img.pixels[idx + 1];
+          b += img.pixels[idx + 2];
+        }
+      }
+      let outIdx = 4 * (y * img.width + x);
+      output.pixels[outIdx]     = r / 9;
+      output.pixels[outIdx + 1] = g / 9;
+      output.pixels[outIdx + 2] = b / 9;
+      output.pixels[outIdx + 3] = 255;
     }
   }
 
   output.updatePixels();
-
-  // Aplicar blur 2 vezes para suavizar ainda mais
-  output.filter(BLUR, 3);
-  output.filter(BLUR, 3);
-
   return output;
 }
