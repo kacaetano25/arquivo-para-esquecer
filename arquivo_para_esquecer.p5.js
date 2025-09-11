@@ -34,8 +34,7 @@ function handleFileSelect(evt) {
     reader.onload = function(e) {
       loadImage(e.target.result, function(loadedImage) {
         img = loadedImage;
-        processedImg = createImage(img.width, img.height);
-        processedImg.copy(img, 0, 0, img.width, img.height, 0, 0, img.width, img.height);
+        // Agora a cópia inicial é feita apenas quando um efeito é aplicado
         
         // Redimensionar canvas para caber a imagem
         let maxSize = 400;
@@ -53,6 +52,7 @@ function handleFileSelect(evt) {
         }
         
         resizeCanvas(w, h);
+        processedImg = img; // Mostra a imagem original inicialmente
         redraw();
       });
     };
@@ -68,17 +68,21 @@ function applyEffect(mode) {
     return;
   }
 
-  processedImg = createImage(img.width, img.height);
-  processedImg.copy(img, 0, 0, img.width, img.height, 0, 0, img.width, img.height);
+  // Faz uma cópia limpa da imagem original antes de aplicar o efeito
+  let imageToProcess = img.get(); 
 
   if (mode === 'urgencia') {
-    rasgarComUrgencia(processedImg);
+    // Mantivemos sua função de rasgar, pois não tínhamos uma versão de teste dela
+    rasgarComUrgencia(imageToProcess);
+    processedImg = imageToProcess; 
     fraseFinal = 'Imagem arrancada a tempo de evitar o pensamento.';
   } else if (mode === 'retorno') {
-    corromperSemRetorno(processedImg);
+    // **CORREÇÃO AQUI**: Agora salvamos o resultado retornado pela função
+    processedImg = corromperSemRetorno(imageToProcess);
     fraseFinal = 'Arquivo danificado além do que se pode chamar de verdade.';
   } else if (mode === 'indiferenca') {
-    desbotarPorIndiferenca(processedImg);
+    // **CORREÇÃO AQUI**: Agora salvamos o resultado retornado pela função
+    processedImg = desbotarPorIndiferenca(imageToProcess);
     fraseFinal = 'Virou ausência, que é o jeito mais elegante de ficar.';
   }
 
@@ -87,135 +91,149 @@ function applyEffect(mode) {
   document.getElementById('frase-final').innerText = fraseFinal;
 }
 
-// ========== EFEITOS ========== //
+// ========== EFEITOS (VERSÕES CORRIGIDAS E PODEROSAS) ========== //
 
+// Efeito de rasgar que já estava no seu arquivo
 function rasgarComUrgencia(gfx) {
   gfx.loadPixels();
-  
-  // Criar faixas horizontais deslocadas
   for (let i = 0; i < 20; i++) {
     let y = int(random(gfx.height));
     let h = int(random(5, 20));
     let xShift = int(random(-30, 30));
-    
-    // Copiar pixels manualmente para evitar problemas
-    let strip = [];
-    for (let py = y; py < min(y + h, gfx.height); py++) {
-      for (let px = 0; px < gfx.width; px++) {
-        let idx = 4 * (py * gfx.width + px);
-        strip.push([
-          gfx.pixels[idx],
-          gfx.pixels[idx + 1],
-          gfx.pixels[idx + 2],
-          gfx.pixels[idx + 3]
-        ]);
-      }
-    }
-    
-    // Colar com deslocamento
-    let stripIdx = 0;
-    for (let py = y; py < min(y + h, gfx.height); py++) {
-      for (let px = 0; px < gfx.width; px++) {
-        let newX = px + xShift;
-        if (newX >= 0 && newX < gfx.width && stripIdx < strip.length) {
-          let idx = 4 * (py * gfx.width + newX);
-          gfx.pixels[idx] = strip[stripIdx][0];
-          gfx.pixels[idx + 1] = strip[stripIdx][1];
-          gfx.pixels[idx + 2] = strip[stripIdx][2];
-          gfx.pixels[idx + 3] = strip[stripIdx][3];
-        }
-        stripIdx++;
-      }
-    }
+    gfx.copy(gfx, 0, y, gfx.width, h, xShift, y, gfx.width, h);
   }
-  
   gfx.updatePixels();
+  // Esta função não retorna nada, ela modifica o 'gfx' diretamente
 }
 
-function corromperSemRetorno(gfx) {
-  gfx.loadPixels();
-  
-  // Aplicar glitch digital
-  for (let i = 0; i < 10; i++) {
-    let sx = int(random(gfx.width - 50));
-    let sy = int(random(gfx.height - 50));
-    let sw = int(random(10, 50));
-    let sh = int(random(10, 50));
-    let dx = sx + int(random(-30, 30));
-    let dy = sy + int(random(-30, 30));
-    
-    // Copiar e colar blocos de pixels
-    let block = [];
-    for (let y = sy; y < min(sy + sh, gfx.height); y++) {
-      for (let x = sx; x < min(sx + sw, gfx.width); x++) {
-        let idx = 4 * (y * gfx.width + x);
-        block.push([
-          gfx.pixels[idx],
-          gfx.pixels[idx + 1],
-          gfx.pixels[idx + 2],
-          gfx.pixels[idx + 3]
-        ]);
-      }
-    }
-    
-    // Colar em nova posição
-    let blockIdx = 0;
-    for (let y = dy; y < min(dy + sh, gfx.height); y++) {
-      for (let x = dx; x < min(dx + sw, gfx.width); x++) {
-        if (x >= 0 && y >= 0 && x < gfx.width && y < gfx.height && blockIdx < block.length) {
-          let idx = 4 * (y * gfx.width + x);
-          // Misturar com inversão aleatória
-          if (random() < 0.3) {
-            gfx.pixels[idx] = 255 - block[blockIdx][0];
-            gfx.pixels[idx + 1] = 255 - block[blockIdx][1];
-            gfx.pixels[idx + 2] = 255 - block[blockIdx][2];
-          } else {
-            gfx.pixels[idx] = block[blockIdx][0];
-            gfx.pixels[idx + 1] = block[blockIdx][1];
-            gfx.pixels[idx + 2] = block[blockIdx][2];
-          }
-          gfx.pixels[idx + 3] = block[blockIdx][3];
-        }
-        blockIdx++;
-      }
+// Sua versão original e poderosa do "Corromper"
+function corromperSemRetorno(img) {
+  let result = createImage(img.width, img.height);
+  img.loadPixels();
+  result.loadPixels();
+
+  // 1. Copia imagem original convertida para P&B
+  for (let y = 0; y < img.height; y++) {
+    for (let x = 0; x < img.width; x++) {
+      let idx = 4 * (y * img.width + x);
+      let r = img.pixels[idx];
+      let g = img.pixels[idx + 1];
+      let b = img.pixels[idx + 2];
+      let gray = (r + g + b) / 3;
+      result.pixels[idx] = gray;
+      result.pixels[idx + 1] = gray;
+      result.pixels[idx + 2] = gray;
+      result.pixels[idx + 3] = 255;
     }
   }
-  
-  // Adicionar ruído
-  for (let i = 0; i < gfx.width * gfx.height * 0.1; i++) {
-    let idx = int(random(gfx.width * gfx.height)) * 4;
+
+  // 2. Blocos desalinhados com mais força
+  for (let i = 0; i < 100; i++) {
+    let x = int(random(img.width));
+    let y = int(random(img.height));
+    let w = int(random(10, 100));
+    let h = int(random(5, 40));
+    let dx = int(random(-80, 80));
+    let dy = int(random(-50, 50));
+    result.copy(result, x, y, w, h, x + dx, y + dy, w, h);
+  }
+
+  // 3. Embaralhar brilho (simula glitch)
+  for (let i = 0; i < img.width * img.height * 0.2; i++) {
+    let idx = int(random(img.width * img.height));
+    let p = idx * 4;
+    let val = result.pixels[p];
     if (random() < 0.5) {
-      let val = random() < 0.5 ? 0 : 255;
-      gfx.pixels[idx] = val;
-      gfx.pixels[idx + 1] = val;
-      gfx.pixels[idx + 2] = val;
+      result.pixels[p] = 255 - val;
+      result.pixels[p + 1] = 255 - val;
+      result.pixels[p + 2] = 255 - val;
     }
   }
-  
-  gfx.updatePixels();
+
+  // 4. Ruído horizontal
+  for (let y = 0; y < img.height; y += 5) {
+    if (random() < 0.4) {
+      for (let x = 0; x < img.width; x++) {
+        let p = 4 * (y * img.width + x);
+        let g = random(256);
+        result.pixels[p] = g;
+        result.pixels[p + 1] = g;
+        result.pixels[p + 2] = g;
+      }
+    }
+  }
+
+  result.updatePixels();
+  return result; // Devolve a imagem nova e processada
 }
 
-function desbotarPorIndiferenca(gfx) {
-  gfx.loadPixels();
-  
-  for (let i = 0; i < gfx.pixels.length; i += 4) {
-    let r = gfx.pixels[i];
-    let g = gfx.pixels[i + 1];
-    let b = gfx.pixels[i + 2];
-    
-    // Converter para cinza
-    let gray = (r * 0.3 + g * 0.59 + b * 0.11);
-    
-    // Manter apenas 15% da cor original
-    gfx.pixels[i] = gray * 0.85 + r * 0.15;
-    gfx.pixels[i + 1] = gray * 0.85 + g * 0.15;
-    gfx.pixels[i + 2] = gray * 0.85 + b * 0.15;
+// Nossa versão corrigida do "Desbotar"
+function desbotarPorIndiferenca(img) {
+  let result = createImage(img.width, img.height);
+  img.loadPixels();
+  result.loadPixels();
+
+  // 1. Saturação reduzida (15%) + contraste suavizado
+  for (let y = 0; y < img.height; y++) {
+    for (let x = 0; x < img.width; x++) {
+      let idx = 4 * (y * img.width + x);
+      let r = img.pixels[idx];
+      let g = img.pixels[idx + 1];
+      let b = img.pixels[idx + 2];
+      let avg = (r + g + b) / 3;
+
+      result.pixels[idx]     = lerp(avg, r, 0.15);
+      result.pixels[idx + 1] = lerp(avg, g, 0.15);
+      result.pixels[idx + 2] = lerp(avg, b, 0.15);
+      result.pixels[idx + 3] = 255;
+    }
   }
-  
-  gfx.updatePixels();
-  
-  // Aplicar blur suave
-  gfx.filter(BLUR, 2);
+  result.updatePixels();
+
+  // 2. Névoa branca leve
+  result.loadPixels();
+  for (let i = 0; i < result.width * result.height; i++) {
+    let p = i * 4;
+    result.pixels[p]     = lerp(result.pixels[p],     255, 0.08);
+    result.pixels[p + 1] = lerp(result.pixels[p + 1], 255, 0.08);
+    result.pixels[p + 2] = lerp(result.pixels[p + 2], 255, 0.08);
+  }
+  result.updatePixels();
+
+  // 3. Blur leve (2x)
+  let blurred1 = applyBoxBlur(result);
+  let blurred2 = applyBoxBlur(blurred1);
+
+  return blurred2; // Devolve a imagem nova e processada
+}
+
+// Função de blur suave que o "Desbotar" precisa
+function applyBoxBlur(img) {
+  let output = createImage(img.width, img.height);
+  img.loadPixels();
+  output.loadPixels();
+
+  for (let y = 1; y < img.height - 1; y++) {
+    for (let x = 1; x < img.width - 1; x++) {
+      let r = 0, g = 0, b = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          let idx = 4 * ((y + dy) * img.width + (x + dx));
+          r += img.pixels[idx];
+          g += img.pixels[idx + 1];
+          b += img.pixels[idx + 2];
+        }
+      }
+      let outIdx = 4 * (y * img.width + x);
+      output.pixels[outIdx]     = r / 9;
+      output.pixels[outIdx + 1] = g / 9;
+      output.pixels[outIdx + 2] = b / 9;
+      output.pixels[outIdx + 3] = 255;
+    }
+  }
+
+  output.updatePixels();
+  return output;
 }
 
 // Função para download
