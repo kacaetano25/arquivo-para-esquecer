@@ -135,7 +135,7 @@ function corromperSemRetorno(img) {
   img.loadPixels();
   result.loadPixels();
 
-  // 1. Copia imagem original convertida para P&B (Esta parte está OK)
+  // 1. Converter para P&B
   for (let y = 0; y < img.height; y++) {
     for (let x = 0; x < img.width; x++) {
       let idx = 4 * (y * img.width + x);
@@ -146,13 +146,16 @@ function corromperSemRetorno(img) {
       result.pixels[idx] = gray;
       result.pixels[idx + 1] = gray;
       result.pixels[idx + 2] = gray;
-      result.pixels[idx + 3] = 255; // Garante que a imagem é opaca
+      result.pixels[idx + 3] = 255;
     }
   }
-  result.updatePixels(); // Atualiza após a primeira etapa
+  result.updatePixels();
 
-  // 2. Blocos desalinhados com mais força (COM A CORREÇÃO)
-  let temp = result.get(); // <<-- CRIAMOS UMA CÓPIA SEGURA AQUI
+  // 2. Criar uma nova imagem para os blocos desalinhados
+  let corrupted = createImage(img.width, img.height);
+  corrupted.copy(result, 0, 0, img.width, img.height, 0, 0, img.width, img.height);
+  
+  // Aplicar desalinhamentos usando a imagem P&B como base
   for (let i = 0; i < 100; i++) {
     let x = int(random(img.width));
     let y = int(random(img.height));
@@ -160,8 +163,8 @@ function corromperSemRetorno(img) {
     let h = int(random(5, 40));
     let dx = int(random(-80, 80));
     let dy = int(random(-50, 50));
-    // Agora usamos a cópia 'temp' como fonte, para evitar erros
-    result.copy(temp, x, y, w, h, x + dx, y + dy, w, h); // <<-- MUDANÇA AQUI
+    
+    corrupted.copy(result, x, y, w, h, x + dx, y + dy, w, h);
   }
 
   // 3. Embaralhar brilho (Esta parte está OK)
