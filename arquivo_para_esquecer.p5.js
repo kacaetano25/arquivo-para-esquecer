@@ -135,7 +135,7 @@ function corromperSemRetorno(img) {
   img.loadPixels();
   result.loadPixels();
 
-  // 1. Copia imagem original convertida para P&B
+  // 1. Copia imagem original convertida para P&B (Esta parte está OK)
   for (let y = 0; y < img.height; y++) {
     for (let x = 0; x < img.width; x++) {
       let idx = 4 * (y * img.width + x);
@@ -146,11 +146,13 @@ function corromperSemRetorno(img) {
       result.pixels[idx] = gray;
       result.pixels[idx + 1] = gray;
       result.pixels[idx + 2] = gray;
-      result.pixels[idx + 3] = 255;
+      result.pixels[idx + 3] = 255; // Garante que a imagem é opaca
     }
   }
+  result.updatePixels(); // Atualiza após a primeira etapa
 
-  // 2. Blocos desalinhados com mais força
+  // 2. Blocos desalinhados com mais força (COM A CORREÇÃO)
+  let temp = result.get(); // <<-- CRIAMOS UMA CÓPIA SEGURA AQUI
   for (let i = 0; i < 100; i++) {
     let x = int(random(img.width));
     let y = int(random(img.height));
@@ -158,10 +160,12 @@ function corromperSemRetorno(img) {
     let h = int(random(5, 40));
     let dx = int(random(-80, 80));
     let dy = int(random(-50, 50));
-    result.copy(result, x, y, w, h, x + dx, y + dy, w, h);
+    // Agora usamos a cópia 'temp' como fonte, para evitar erros
+    result.copy(temp, x, y, w, h, x + dx, y + dy, w, h); // <<-- MUDANÇA AQUI
   }
 
-  // 3. Embaralhar brilho (simula glitch)
+  // 3. Embaralhar brilho (Esta parte está OK)
+  result.loadPixels();
   for (let i = 0; i < img.width * img.height * 0.2; i++) {
     let idx = int(random(img.width * img.height));
     let p = idx * 4;
@@ -172,8 +176,10 @@ function corromperSemRetorno(img) {
       result.pixels[p + 2] = 255 - val;
     }
   }
+  result.updatePixels();
 
-  // 4. Ruído horizontal
+  // 4. Ruído horizontal (Esta parte está OK)
+  result.loadPixels();
   for (let y = 0; y < img.height; y += 5) {
     if (random() < 0.4) {
       for (let x = 0; x < img.width; x++) {
