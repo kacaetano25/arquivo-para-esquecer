@@ -34,7 +34,6 @@ function handleFileSelect(evt) {
     reader.onload = function(e) {
       loadImage(e.target.result, function(loadedImage) {
         img = loadedImage;
-        // Agora a cópia inicial é feita apenas quando um efeito é aplicado
         
         // Redimensionar canvas para caber a imagem
         let maxSize = 400;
@@ -61,27 +60,22 @@ function handleFileSelect(evt) {
   }
 }
 
-// Botão chama isso: applyEffect('urgencia'), 'retorno' ou 'indiferenca'
 function applyEffect(mode) {
   if (!img) {
     alert('Por favor, selecione uma imagem primeiro!');
     return;
   }
 
-  // Faz uma cópia limpa da imagem original antes de aplicar o efeito
+  // Faz uma cópia limpa da imagem original antes de aplicar cada efeito
   let imageToProcess = img.get(); 
 
   if (mode === 'urgencia') {
-    // Mantivemos sua função de rasgar, pois não tínhamos uma versão de teste dela
-    rasgarComUrgencia(imageToProcess);
-    processedImg = imageToProcess; 
+    processedImg = rasgarComUrgencia(imageToProcess);
     fraseFinal = 'Imagem arrancada a tempo de evitar o pensamento.';
   } else if (mode === 'retorno') {
-    // **CORREÇÃO AQUI**: Agora salvamos o resultado retornado pela função
     processedImg = corromperSemRetorno(imageToProcess);
     fraseFinal = 'Arquivo danificado além do que se pode chamar de verdade.';
   } else if (mode === 'indiferenca') {
-    // **CORREÇÃO AQUI**: Agora salvamos o resultado retornado pela função
     processedImg = desbotarPorIndiferenca(imageToProcess);
     fraseFinal = 'Virou ausência, que é o jeito mais elegante de ficar.';
   }
@@ -91,22 +85,51 @@ function applyEffect(mode) {
   document.getElementById('frase-final').innerText = fraseFinal;
 }
 
-// ========== EFEITOS (VERSÕES CORRIGIDAS E PODEROSAS) ========== //
+// ========== EFEITOS (VERSÕES FINAIS E PODEROSAS) ========== //
 
-// Efeito de rasgar que já estava no seu arquivo
-function rasgarComUrgencia(gfx) {
-  gfx.loadPixels();
-  for (let i = 0; i < 20; i++) {
-    let y = int(random(gfx.height));
-    let h = int(random(5, 20));
-    let xShift = int(random(-30, 30));
-    gfx.copy(gfx, 0, y, gfx.width, h, xShift, y, gfx.width, h);
+function rasgarComUrgencia(img) {
+  let rasgada = createImage(img.width, img.height);
+  img.loadPixels();
+  rasgada.loadPixels();
+
+  let maxOffset = int(random(60, 130));
+  let sliceHeight = int(random(5, 15));
+
+  for (let y = 0; y < img.height; y += sliceHeight) {
+    let offsetX = int(random(-maxOffset, maxOffset));
+    let glitchChance = random();
+    let invertChance = random();
+
+    for (let x = 0; x < img.width; x++) {
+      for (let i = 0; i < sliceHeight; i++) {
+        let srcY = y + i;
+        let dstY = y + i;
+        if (srcY < img.height && dstY < img.height) {
+          let srcIndex = 4 * ((srcY * img.width) + x);
+
+          let xTarget = (invertChance < 0.3) ? img.width - x - 1 + offsetX : x + offsetX;
+          xTarget = constrain(xTarget, 0, img.width - 1);
+          let dstIndex = 4 * ((dstY * img.width) + xTarget);
+
+          if (glitchChance < 0.2) {
+            rasgada.pixels[dstIndex + 0] = 255;
+            rasgada.pixels[dstIndex + 1] = 255;
+            rasgada.pixels[dstIndex + 2] = 255;
+            rasgada.pixels[dstIndex + 3] = 255;
+          } else {
+            for (let j = 0; j < 4; j++) {
+              rasgada.pixels[dstIndex + j] = img.pixels[srcIndex + j];
+            }
+          }
+        }
+      }
+    }
   }
-  gfx.updatePixels();
-  // Esta função não retorna nada, ela modifica o 'gfx' diretamente
+
+  rasgada.updatePixels();
+  return rasgada;
 }
 
-// Sua versão original e poderosa do "Corromper"
 function corromperSemRetorno(img) {
   let result = createImage(img.width, img.height);
   img.loadPixels();
@@ -164,16 +187,15 @@ function corromperSemRetorno(img) {
   }
 
   result.updatePixels();
-  return result; // Devolve a imagem nova e processada
+  return result;
 }
 
-// Nossa versão corrigida do "Desbotar"
 function desbotarPorIndiferenca(img) {
   let result = createImage(img.width, img.height);
   img.loadPixels();
   result.loadPixels();
 
-  // 1. Saturação reduzida (15%) + contraste suavizado
+  // 1. Saturação reduzida
   for (let y = 0; y < img.height; y++) {
     for (let x = 0; x < img.width; x++) {
       let idx = 4 * (y * img.width + x);
@@ -181,8 +203,7 @@ function desbotarPorIndiferenca(img) {
       let g = img.pixels[idx + 1];
       let b = img.pixels[idx + 2];
       let avg = (r + g + b) / 3;
-
-      result.pixels[idx]     = lerp(avg, r, 0.15);
+      result.pixels[idx] = lerp(avg, r, 0.15);
       result.pixels[idx + 1] = lerp(avg, g, 0.15);
       result.pixels[idx + 2] = lerp(avg, b, 0.15);
       result.pixels[idx + 3] = 255;
@@ -194,7 +215,7 @@ function desbotarPorIndiferenca(img) {
   result.loadPixels();
   for (let i = 0; i < result.width * result.height; i++) {
     let p = i * 4;
-    result.pixels[p]     = lerp(result.pixels[p],     255, 0.08);
+    result.pixels[p] = lerp(result.pixels[p], 255, 0.08);
     result.pixels[p + 1] = lerp(result.pixels[p + 1], 255, 0.08);
     result.pixels[p + 2] = lerp(result.pixels[p + 2], 255, 0.08);
   }
@@ -204,10 +225,9 @@ function desbotarPorIndiferenca(img) {
   let blurred1 = applyBoxBlur(result);
   let blurred2 = applyBoxBlur(blurred1);
 
-  return blurred2; // Devolve a imagem nova e processada
+  return blurred2;
 }
 
-// Função de blur suave que o "Desbotar" precisa
 function applyBoxBlur(img) {
   let output = createImage(img.width, img.height);
   img.loadPixels();
@@ -225,13 +245,12 @@ function applyBoxBlur(img) {
         }
       }
       let outIdx = 4 * (y * img.width + x);
-      output.pixels[outIdx]     = r / 9;
+      output.pixels[outIdx] = r / 9;
       output.pixels[outIdx + 1] = g / 9;
       output.pixels[outIdx + 2] = b / 9;
       output.pixels[outIdx + 3] = 255;
     }
   }
-
   output.updatePixels();
   return output;
 }
