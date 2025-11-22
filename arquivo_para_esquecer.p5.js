@@ -199,70 +199,86 @@ function corromperSemRetorno(img) {
   return result;
 }
 
-function desbotarPorIndiferenca(img) {
-  let result = createImage(img.width, img.height);
+function desbotarPorIndiferenca(inputImg, intensidade = 1) {
+  let img = inputImg.get();
+
   img.loadPixels();
-  result.loadPixels();
-
-  // 1. Saturação reduzida
-  for (let y = 0; y < img.height; y++) {
-    for (let x = 0; x < img.width; x++) {
-      let idx = 4 * (y * img.width + x);
-      let r = img.pixels[idx];
-      let g = img.pixels[idx + 1];
-      let b = img.pixels[idx + 2];
-      let avg = (r + g + b) / 3;
-      result.pixels[idx] = lerp(avg, r, 0.15);
-      result.pixels[idx + 1] = lerp(avg, g, 0.15);
-      result.pixels[idx + 2] = lerp(avg, b, 0.15);
-      result.pixels[idx + 3] = 255;
-    }
-  }
-  result.updatePixels();
-
-  // 2. Névoa branca leve
-  result.loadPixels();
-  for (let i = 0; i < result.width * result.height; i++) {
-    let p = i * 4;
-    result.pixels[p] = lerp(result.pixels[p], 255, 0.08);
-    result.pixels[p + 1] = lerp(result.pixels[p + 1], 255, 0.08);
-    result.pixels[p + 2] = lerp(result.pixels[p + 2], 255, 0.08);
-  }
-  result.updatePixels();
-
-  // 3. Blur leve (2x)
-  let blurred1 = applyBoxBlur(result);
-  let blurred2 = applyBoxBlur(blurred1);
-
-  return blurred2;
-}
-
-function applyBoxBlur(img) {
   let output = createImage(img.width, img.height);
-  img.loadPixels();
   output.loadPixels();
 
-  for (let y = 1; y < img.height - 1; y++) {
-    for (let x = 1; x < img.width - 1; x++) {
-      let r = 0, g = 0, b = 0;
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          let idx = 4 * ((y + dy) * img.width + (x + dx));
-          r += img.pixels[idx];
-          g += img.pixels[idx + 1];
-          b += img.pixels[idx + 2];
+  let baseGain       = 1.4;
+  let baseBlowOut    = 80;
+  let baseDesat      = 0.9;
+  let baseBlurRadius = 4;
+
+  function jitter(base, margem = 0.2) {
+    let fator = 1 + random(-margem, margem) * intensidade;
+    return base * fator;
+  }
+
+  let gain       = jitter(baseGain);
+  let blowOut    = jitter(baseBlowOut);
+  let desat      = jitter(baseDesat);
+  desat = constrain(desat, 0, 1);
+
+  let blurRadius = Math.round(
+    constrain(jitter(baseBlurRadius, 0.25), 1, 12)
+  );
+
+  let w = img.width;
+  let h = img.height;
+
+  for (let i = 0; i < img.pixels.length; i += 4) {
+    output.pixels[i]     = img.pixels[i];
+    output.pixels[i + 1] = img.pixels[i + 1];
+    output.pixels[i + 2] = img.pixels[i + 2];
+    output.pixels[i + 3] = img.pixels[i + 3];
+  }
+
+  for (let y = blurRadius; y < h - blurRadius; y++) {
+    for (let x = blurRadius; x < w - blurRadius; x++) {
+
+      let sumR = 0, sumG = 0, sumB = 0;
+      let samples = 0;
+
+      for (let dy = -blurRadius; dy <= blurRadius; dy++) {
+        for (let dx = -blurRadius; dx <= blurRadius; dx++) {
+          let sx = x + dx;
+          let sy = y + dy;
+
+          let idx = 4 * (sy * w + sx);
+          sumR += img.pixels[idx];
+          sumG += img.pixels[idx + 1];
+          sumB += img.pixels[idx + 2];
+          samples++;
         }
       }
-      let outIdx = 4 * (y * img.width + x);
-      output.pixels[outIdx] = r / 9;
-      output.pixels[outIdx + 1] = g / 9;
-      output.pixels[outIdx + 2] = b / 9;
+
+      let r = sumR / samples;
+      let g = sumG / samples;
+      let b = sumB / samples;
+
+      r = (r * gain) + blowOut;
+      g = (g * gain) + blowOut;
+      b = (b * gain) + blowOut;
+
+      let luma = 0.299 * r + 0.587 * g + 0.114 * b;
+      r = lerp(r, luma, desat);
+      g = lerp(g, luma, desat);
+      b = lerp(b, luma, desat);
+
+      let outIdx = 4 * (y * w + x);
+      output.pixels[outIdx]     = constrain(r, 0, 255);
+      output.pixels[outIdx + 1] = constrain(g, 0, 255);
+      output.pixels[outIdx + 2] = constrain(b, 0, 255);
       output.pixels[outIdx + 3] = 255;
     }
   }
+
   output.updatePixels();
   return output;
 }
+
 
 // Função para download
 function downloadImage() {
