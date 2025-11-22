@@ -1,47 +1,75 @@
-function desbotarPorIndiferenca(img) {
-  let output = createImage(img.width, img.height);
+// Efeito: Desbotar por Indiferença (versão forte + blur pesado)
+// Espera um p5.Image como entrada e devolve um novo p5.Image processado.
+
+function desbotarPorIndiferenca(inputImg, intensidade = 1) {
+  let img = inputImg.get();
+
   img.loadPixels();
+  let output = createImage(img.width, img.height);
   output.loadPixels();
 
-  // Configuração da "violência"
-  // blowOut: quanto de luz extra adicionamos (simula o sol queimando a foto)
-  let blowOut = 70; 
-  // desat: fator de dessaturação (0 a 1) - empalidece as cores
-  let desatFactor = 0.3; 
+  let baseGain       = 1.4;
+  let baseBlowOut    = 80;
+  let baseDesat      = 0.9;
+  let baseBlurRadius = 4;
 
-  for (let y = 1; y < img.height - 1; y++) {
-    for (let x = 1; x < img.width - 1; x++) {
+  function jitter(base, margem = 0.2) {
+    let fator = 1 + random(-margem, margem) * intensidade;
+    return base * fator;
+  }
+
+  let gain       = jitter(baseGain);
+  let blowOut    = jitter(baseBlowOut);
+  let desat      = jitter(baseDesat);
+  desat = constrain(desat, 0, 1);
+
+  let blurRadius = Math.round(
+    constrain(jitter(baseBlurRadius, 0.25), 1, 12)
+  );
+
+  let w = img.width;
+  let h = img.height;
+
+  for (let i = 0; i < img.pixels.length; i += 4) {
+    output.pixels[i]     = img.pixels[i];
+    output.pixels[i + 1] = img.pixels[i + 1];
+    output.pixels[i + 2] = img.pixels[i + 2];
+    output.pixels[i + 3] = img.pixels[i + 3];
+  }
+
+  for (let y = blurRadius; y < h - blurRadius; y++) {
+    for (let x = blurRadius; x < w - blurRadius; x++) {
+
       let sumR = 0, sumG = 0, sumB = 0;
-      
-      // 1. BLUR: Média dos vizinhos (perda de definição)
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          let idx = 4 * ((y + dy) * img.width + (x + dx));
+      let samples = 0;
+
+      for (let dy = -blurRadius; dy <= blurRadius; dy++) {
+        for (let dx = -blurRadius; dx <= blurRadius; dx++) {
+          let sx = x + dx;
+          let sy = y + dy;
+
+          let idx = 4 * (sy * w + sx);
           sumR += img.pixels[idx];
           sumG += img.pixels[idx + 1];
           sumB += img.pixels[idx + 2];
+          samples++;
         }
       }
-      
-      let r = sumR / 9;
-      let g = sumG / 9;
-      let b = sumB / 9;
 
-      // 2. EXCESSO DE LUZ (Han: positividade excessiva)
-      // Adiciona brilho forçado para "lavar" a imagem
-      r = r + blowOut;
-      g = g + blowOut;
-      b = b + blowOut;
+      let r = sumR / samples;
+      let g = sumG / samples;
+      let b = sumB / samples;
 
-      // 3. PERDA DE DIFERENÇA (Dessaturação)
-      // Calcula a luminosidade e mistura o pixel com ela (tira a cor)
-      let luma = 0.3 * r + 0.59 * g + 0.11 * b;
-      r = lerp(r, luma, desatFactor);
-      g = lerp(g, luma, desatFactor);
-      b = lerp(b, luma, desatFactor);
+      r = (r * gain) + blowOut;
+      g = (g * gain) + blowOut;
+      b = (b * gain) + blowOut;
 
-      // Garante que não passe de 255
-      let outIdx = 4 * (y * img.width + x);
+      let luma = 0.299 * r + 0.587 * g + 0.114 * b;
+      r = lerp(r, luma, desat);
+      g = lerp(g, luma, desat);
+      b = lerp(b, luma, desat);
+
+      let outIdx = 4 * (y * w + x);
       output.pixels[outIdx]     = constrain(r, 0, 255);
       output.pixels[outIdx + 1] = constrain(g, 0, 255);
       output.pixels[outIdx + 2] = constrain(b, 0, 255);
@@ -51,4 +79,11 @@ function desbotarPorIndiferenca(img) {
 
   output.updatePixels();
   return output;
+}
+
+if (typeof window !== 'undefined') {
+  window.desbotarPorIndiferenca = desbotarPorIndiferenca;
+}
+if (typeof module !== 'undefined') {
+  module.exports = desbotarPorIndiferenca;
 }
