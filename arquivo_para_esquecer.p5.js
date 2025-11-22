@@ -130,12 +130,28 @@ function rasgarComUrgencia(img) {
   return rasgada;
 }
 
+// ===== CORROMPER SEM RETORNO – VERSÃO HEAVY METAL CORRIGIDA =====
 function corromperSemRetorno(img) {
-  let result = createImage(img.width, img.height);
-  img.loadPixels();
-  result.loadPixels();
 
-  // 1. Converter para P&B
+  // ---- PARÂMETROS AJUSTÁVEIS ----
+  let numBlocks     = 180;   // quantidade de blocos desalinhados
+  let minBlockW     = 20;    // largura mínima do bloco
+  let maxBlockW     = 140;   // largura máxima do bloco
+  let minBlockH     = 8;     // altura mínima
+  let maxBlockH     = 60;    // altura máxima
+  let maxShiftX     = 120;   // deslocamento horizontal
+  let maxShiftY     = 70;    // deslocamento vertical
+
+  let invertFraction = 0.35; // quantos pixels podem ser invertidos
+  let invertProb     = 0.7;  // chance de inverter um pixel selecionado
+  let lineStep       = 4;    // passo entre linhas horizontais
+  let lineProb       = 0.6;  // probabilidade de uma linha virar ruído
+
+  // ---- 1. Base em preto e branco ----
+  let base = createImage(img.width, img.height);
+  img.loadPixels();
+  base.loadPixels();
+
   for (let y = 0; y < img.height; y++) {
     for (let x = 0; x < img.width; x++) {
       let idx = 4 * (y * img.width + x);
@@ -143,60 +159,62 @@ function corromperSemRetorno(img) {
       let g = img.pixels[idx + 1];
       let b = img.pixels[idx + 2];
       let gray = (r + g + b) / 3;
-      result.pixels[idx] = gray;
-      result.pixels[idx + 1] = gray;
-      result.pixels[idx + 2] = gray;
-      result.pixels[idx + 3] = 255;
+
+      base.pixels[idx]     = gray;
+      base.pixels[idx + 1] = gray;
+      base.pixels[idx + 2] = gray;
+      base.pixels[idx + 3] = 255;
     }
   }
-  result.updatePixels();
+  base.updatePixels();
 
-  // 2. Criar uma nova imagem para os blocos desalinhados
+  // ---- 2. Blocos desalinhados (GLITCH) ----
   let corrupted = createImage(img.width, img.height);
-  corrupted.copy(result, 0, 0, img.width, img.height, 0, 0, img.width, img.height);
-  
-  // Aplicar desalinhamentos usando a imagem P&B como base
-  for (let i = 0; i < 100; i++) {
-    let x = int(random(img.width));
-    let y = int(random(img.height));
-    let w = int(random(10, 100));
-    let h = int(random(5, 40));
-    let dx = int(random(-80, 80));
-    let dy = int(random(-50, 50));
-    
-    corrupted.copy(result, x, y, w, h, x + dx, y + dy, w, h);
+  corrupted.copy(base, 0, 0, img.width, img.height, 0, 0, img.width, img.height);
+
+  for (let i = 0; i < numBlocks; i++) {
+    let x  = int(random(img.width));
+    let y  = int(random(img.height));
+    let w  = int(random(minBlockW, maxBlockW));
+    let h  = int(random(minBlockH, maxBlockH));
+    let dx = int(random(-maxShiftX, maxShiftX));
+    let dy = int(random(-maxShiftY, maxShiftY));
+
+    corrupted.copy(base, x, y, w, h, x + dx, y + dy, w, h);
   }
 
-  // 3. Embaralhar brilho (Esta parte está OK)
-  result.loadPixels();
-  for (let i = 0; i < img.width * img.height * 0.2; i++) {
-    let idx = int(random(img.width * img.height));
-    let p = idx * 4;
-    let val = result.pixels[p];
-    if (random() < 0.5) {
-      result.pixels[p] = 255 - val;
-      result.pixels[p + 1] = 255 - val;
-      result.pixels[p + 2] = 255 - val;
+  // ---- 3. Pixel brightness scramble (inversões) ----
+  corrupted.loadPixels();
+  let totalPixels = img.width * img.height;
+  let samples     = int(totalPixels * invertFraction);
+
+  for (let i = 0; i < samples; i++) {
+    let idx = int(random(totalPixels)) * 4;
+    let val = corrupted.pixels[idx];
+
+    if (random() < invertProb) {
+      let inv = 255 - val;
+      corrupted.pixels[idx]     = inv;
+      corrupted.pixels[idx + 1] = inv;
+      corrupted.pixels[idx + 2] = inv;
     }
   }
-  result.updatePixels();
 
-  // 4. Ruído horizontal (Esta parte está OK)
-  result.loadPixels();
-  for (let y = 0; y < img.height; y += 5) {
-    if (random() < 0.4) {
+  // ---- 4. Ruído horizontal (faixas tipo VHS) ----
+  for (let y = 0; y < img.height; y += lineStep) {
+    if (random() < lineProb) {
       for (let x = 0; x < img.width; x++) {
         let p = 4 * (y * img.width + x);
-        let g = random(256);
-        result.pixels[p] = g;
-        result.pixels[p + 1] = g;
-        result.pixels[p + 2] = g;
+        let g = random(30, 230);
+        corrupted.pixels[p]     = g;
+        corrupted.pixels[p + 1] = g;
+        corrupted.pixels[p + 2] = g;
       }
     }
   }
 
-  result.updatePixels();
-  return result;
+  corrupted.updatePixels();
+  return corrupted;
 }
 
 function desbotarPorIndiferenca(inputImg, intensidade = 1) {
